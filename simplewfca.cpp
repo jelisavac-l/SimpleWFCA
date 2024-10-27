@@ -12,6 +12,7 @@
 
 #define MAP_SIZE_X 32
 #define MAP_SIZE_Y 56
+static int collapsed_tiles = 0;
 // #define SEA_CHAR '\u001b[34m S\u001b[0m'
 // #define COAST_CHAR '\u001b[33m C\u001b[0m'
 // #define LAND_CHAR '\u001b[32m L\u001b[0m'
@@ -38,7 +39,8 @@ void render(TILE map[MAP_SIZE_X][MAP_SIZE_Y]);
 void init_map(TILE map[MAP_SIZE_X][MAP_SIZE_Y]);
 // Provide map for rendering, tile to be updated and its new type
 void update_tile(TILE map[MAP_SIZE_X][MAP_SIZE_Y], TILE* tile, TYPE type);
-void update_tile_entropy(TILE* tile);
+// Returns a pointer to a TILE with smallest entropy
+TILE* update_tile_entropy(TILE map[MAP_SIZE_X][MAP_SIZE_Y]);
 void collapse(TILE map[MAP_SIZE_X][MAP_SIZE_Y]);    // Uf...
 
 int main()
@@ -124,6 +126,47 @@ void update_tile(TILE map[MAP_SIZE_X][MAP_SIZE_Y], TILE *tile, TYPE type)
     render(map);
 }
 
+TILE* update_tile_entropy(TILE map[MAP_SIZE_X][MAP_SIZE_Y])
+{
+
+    TILE* smallest_entropy = NULL;
+
+    for(size_t i = 0; i < MAP_SIZE_X; i++)
+        for (size_t j = 0; j < MAP_SIZE_Y; j++){
+            if (map[i][j].tile_type == UNKNOWN)
+            {
+                // Specify collapse rules
+                if(j == 0)
+                {
+                    map[i][j].valid_types.clear();
+                    map[i][j].valid_types.push_back(LAND);
+                }
+
+                else if(map[i][j-1].tile_type == SEA || map[i][j-1].tile_type == COAST) {
+                    map[i][j].valid_types.clear();
+                    map[i][j].valid_types.push_back(SEA);
+                }
+                else if(map[i][j-1].tile_type == LAND){
+                    map[i][j].valid_types.clear();
+                    map[i][j].valid_types.push_back(LAND);
+                    map[i][j].valid_types.push_back(COAST);
+                }
+                map[i][j].entropy = map[i][j].valid_types.size();
+
+                // Initial minimum entropy
+                if(smallest_entropy == NULL) smallest_entropy = &map[i][j];
+                if(smallest_entropy->entropy > map[i][j].entropy && map[i][j].entropy > 0)
+                {
+                    smallest_entropy = &map[i][j];
+                }
+
+            }
+            else map[i][j].entropy = 0;
+        }
+
+        return smallest_entropy;
+}
+
 void collapse(TILE map[MAP_SIZE_X][MAP_SIZE_Y])
 {
 
@@ -132,6 +175,17 @@ void collapse(TILE map[MAP_SIZE_X][MAP_SIZE_Y])
     int firstY = get_random_int(0, MAP_SIZE_Y-1);
     TYPE firstType = (TYPE)get_random_int(2, 4);
     update_tile(map, &map[firstX][firstY], firstType);
+    collapsed_tiles++;
 
+    // Testing smallest entropy
+    while(collapsed_tiles < MAP_SIZE_X * MAP_SIZE_Y)
+    {
+        TILE* sm_ent = update_tile_entropy(map);
+        int randomTypeIndex = get_random_int(0, sm_ent->valid_types.size()-1);
+        TYPE randomType = sm_ent->valid_types.at(randomTypeIndex);
+        update_tile(map, sm_ent, (TYPE)randomType);
+        collapsed_tiles++;
+    }
+    
 
 }
