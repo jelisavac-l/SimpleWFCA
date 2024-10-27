@@ -4,6 +4,7 @@
 #include <chrono>
 #include <thread>
 #include <iomanip>
+#include <algorithm>
 
 #define RED "\u001b[31m"
 #define GRN "\u001b[32m"
@@ -86,13 +87,13 @@ void render(TILE map[MAP_SIZE_X][MAP_SIZE_Y])
                 cout << RED << WIP_CHAR << RESET;
                 break;
             case SEA:
-                cout << BLU << map[i][j].entropy << RESET;
+                cout << BLU << SEA_CHAR << RESET;
                 break;
             case COAST:
-                cout << YEL << map[i][j].entropy << RESET;
+                cout << YEL << COAST_CHAR << RESET;
                 break;
             case LAND:
-                cout << GRN << map[i][j].entropy << RESET;
+                cout << GRN << LAND_CHAR << RESET;
                 break;
             }
         }
@@ -137,19 +138,32 @@ TILE* update_tile_entropy(TILE map[MAP_SIZE_X][MAP_SIZE_Y], TILE* first)
         for (size_t j = 0; j < MAP_SIZE_Y; j++){
             if (map[i][j].tile_type == UNKNOWN)
             {
+                // OVO SVE PRETVORITI U SWITCHEVE I RESEN CEO PROBLEM
                 // Specify collapse rules
                 if(j == 0 )  // SEGFAULT
                 {
                     map[i][j].valid_types.clear();
                     map[i][j].valid_types.push_back(LAND);
-                    map[i][j].valid_types.push_back(COAST);
                 }
 
+
+                else if(i < MAP_SIZE_X - 1 && map[i+1][j].tile_type == SEA) {
+                    map[i][j].valid_types.clear();
+                    map[i][j].valid_types.push_back(SEA);
+                    //map[i][j].valid_types.push_back(COAST);
+                }
+
+                else if(j < MAP_SIZE_Y - 1 && map[i][j+1].tile_type == SEA) {
+                    map[i][j].valid_types.clear();
+                    // map[i][j].valid_types.push_back(SEA);
+                    map[i][j].valid_types.push_back(COAST);
+                }
                 //LAND LEFT
                 else if(map[i][j-1].tile_type == LAND){
                     map[i][j].valid_types.clear();
-                    map[i][j].valid_types.push_back(LAND);
-                    map[i][j].valid_types.push_back(COAST);
+                        map[i][j].valid_types.push_back(LAND);
+                    
+                        map[i][j].valid_types.push_back(COAST);
                 }
                 
                 // SEA/COAST LEFT
@@ -160,14 +174,14 @@ TILE* update_tile_entropy(TILE map[MAP_SIZE_X][MAP_SIZE_Y], TILE* first)
 
                 if(j == MAP_SIZE_Y - 1)
                 {
-                    // ...
+                    
                 }
 
-                else if(map[i][j+1].tile_type == LAND){
+                else if(map[i][j+1].tile_type == LAND || map[i][j+1].tile_type == COAST){
                     map[i][j].valid_types.clear();
                     map[i][j].valid_types.push_back(LAND);
                 }
-                
+            
 
                 map[i][j].entropy = map[i][j].valid_types.size();
                 // Initial minimum entropy
@@ -199,11 +213,16 @@ void collapse(TILE map[MAP_SIZE_X][MAP_SIZE_Y])
     while(collapsed_tiles < MAP_SIZE_X * MAP_SIZE_Y)
     {
         TILE* sm_ent = update_tile_entropy(map, &map[firstX][firstY]);
+
+        if(find(sm_ent->valid_types.begin(), sm_ent->valid_types.end(), LAND) != sm_ent->valid_types.end()) {
+            for (size_t i = 0; i < 4; i++)
+                sm_ent->valid_types.push_back(LAND);
+        }
         int random_type_index = get_random_int(0, sm_ent->valid_types.size()-1);
         TYPE random_type = sm_ent->valid_types.at(random_type_index);
         update_tile(map, sm_ent, (TYPE)random_type);
         collapsed_tiles++;
     }
-    
-
+    clear_screen();
+    render(map);
 }

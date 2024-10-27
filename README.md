@@ -1,1 +1,1 @@
-#Simple Wave Function Collapse Algorithm
+# Simple Wave Function Collapse Algorithm
